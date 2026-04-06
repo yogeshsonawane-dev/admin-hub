@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://adminhub.famvest.online/api'
+  apiUrl: 'https://adminhub.upvaly.com/api'
 };
 
