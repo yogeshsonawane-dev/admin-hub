@@ -13,7 +13,16 @@ export interface ApplicationConfig {
   service_name?: string;
   deploy_path?: string;
   application_url?: string;
+  api_health_end_point?: string;
   symlink?: string;
+}
+
+export interface ApplicationHealthStatus {
+  applicationName: string;
+  applicationUrlLive: boolean;
+  apiUrlLive: boolean;
+  healthy: boolean;
+  message?: string;
 }
 
 export interface DeploymentResponse {
@@ -154,8 +163,8 @@ export class DeploymentService {
   /**
    * Check if application is live by testing the application URL
    */
-  checkAppLiveStatus(appName: string): Observable<any> {
-    return this.http.get(`${this.deploymentBaseUrl}/applications/${appName}/health`);
+  checkAppLiveStatus(appName: string): Observable<ApplicationHealthStatus> {
+    return this.http.get<ApplicationHealthStatus>(`${this.deploymentBaseUrl}/applications/${appName}/health`);
   }
 
   /**

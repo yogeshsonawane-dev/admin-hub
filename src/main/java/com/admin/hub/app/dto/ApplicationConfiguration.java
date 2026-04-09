@@ -35,6 +35,9 @@ public class ApplicationConfiguration {
     @JsonProperty("application_url")
     private String applicationUrl;
 
+    @JsonProperty("api_health_end_point")
+    private String apiHealthEndPoint;
+
     private String symlink;
 }
 

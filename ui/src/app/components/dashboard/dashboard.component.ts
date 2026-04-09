@@ -1,6 +1,11 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { DeploymentService, ApplicationConfig, DeploymentResponse } from '../../services/deployment.service';
+import {
+  DeploymentService,
+  ApplicationConfig,
+  ApplicationHealthStatus,
+  DeploymentResponse
+} from '../../services/deployment.service';
 import { ServerService, RunningService, ServerHealthSummary } from '../../services/server.service';
 import { ToastrService } from 'ngx-toastr';
 import { Subscription } from 'rxjs';
@@ -26,13 +31,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   statusContent = '';
   activeActionMap: { [key: string]: boolean } = {};
   filterText = '';
-  serviceStatus: string = 'Checking...';
+  serviceStatus: string = '...';
   private healthCheckInterval: any;
   private appStatusCheckInterval: any;
   private serverHealthInterval: any;
-  private autoSlideInterval: any;
-  private previousServiceStatus: string = 'Checking...';
-  appLiveStatus: { [key: string]: boolean | null } = {};
+  private previousServiceStatus: string = '...';
+  appLiveStatus: { [key: string]: ApplicationHealthStatus | null } = {};
   private healthAndAppsSubscription: Subscription | null = null;
   private serverHealthSubscription: Subscription | null = null;
 
@@ -127,9 +131,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-  ngAfterViewInit(): void {
-    this.startAutoSlide();
-  }
+  ngAfterViewInit(): void {}
 
   ngOnDestroy(): void {
     // Unsubscribe from SSE streams
@@ -151,9 +153,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     // Clean up the server health interval if it's set (fallback polling)
     if (this.serverHealthInterval) {
       clearInterval(this.serverHealthInterval);
-    }
-    if (this.autoSlideInterval) {
-      clearInterval(this.autoSlideInterval);
     }
   }
 
@@ -186,7 +185,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.applications = apps;
         this.loading = false;
         this.checkAllAppsLiveStatus();
-        this.startAutoSlide();
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (error) => {
@@ -211,7 +209,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.selectedApp = null;
     } else {
       this.selectedApp = app;
-      if (app.application_url) {
+      if (this.hasHealthCheckTarget(app)) {
         this.checkAppLiveStatus(app.name);
       }
     }
@@ -219,20 +217,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.deploymentResponse = null;
   }
 
-  getDescription(app: ApplicationConfig): string {
-    if (!app) return 'No description';
-    const parts = [];
-    if (app.build_type) parts.push(`Build: ${app.build_type}`);
-    if (app.service_name) parts.push(`Service: ${app.service_name}`);
-    return parts.length > 0 ? parts.join(' | ') : 'No description';
-  }
-
   getLiveAppCount(): number {
-    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name] === true).length;
+    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name]?.healthy === true).length;
   }
 
   getOfflineAppCount(): number {
-    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name] === false).length;
+    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name]?.healthy === false).length;
   }
 
   getCompactSubtitle(app: ApplicationConfig): string {
@@ -277,29 +267,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private startAutoSlide(): void {
-    if (this.autoSlideInterval) {
-      clearInterval(this.autoSlideInterval);
-    }
-
-    this.autoSlideInterval = setInterval(() => {
-      if (this.loading || !this.appCarousel?.nativeElement || this.getFilteredApplications().length < 2) {
-        return;
-      }
-
-      const container = this.appCarousel.nativeElement;
-      const maxScrollLeft = Math.max(container.scrollWidth - container.clientWidth, 0);
-      const amount = Math.max(container.clientWidth * 0.8, 280);
-
-      if (container.scrollLeft >= maxScrollLeft - 4) {
-        container.scrollTo({ left: 0, behavior: 'smooth' });
-        return;
-      }
-
-      container.scrollBy({ left: amount, behavior: 'smooth' });
-    }, 10000);
-  }
-
   executeAction(action: string): void {
     if (!this.selectedApp) return;
 
@@ -331,6 +298,41 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         } else {
           this.toastr.error(response.message, `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`);
         }
+        this.checkAppLiveStatus(appName);
+      },
+      (error) => {
+        this.activeActionMap[key] = false;
+        const errorMsg = error.error?.message || error.message || 'Unknown error occurred';
+        console.log(errorMsg);
+        this.checkAppLiveStatus(appName);
+      }
+    );
+  }
+
+  executeDetailsAction(action: 'logs' | 'status', app: ApplicationConfig): void {
+    const appName = app.name;
+    const key = `${appName}-${action}`;
+
+    this.activeActionMap[key] = true;
+
+    this.getActionObservable(action, appName).subscribe(
+      (response) => {
+        this.activeActionMap[key] = false;
+
+        if (response.success) {
+          this.toastr.success(response.message, `${action.charAt(0).toUpperCase() + action.slice(1)} Complete`);
+
+          if (action === 'logs') {
+            this.logsContent = this.extractLogsFromResponse(response);
+            this.showLogsModal = true;
+          } else {
+            this.statusContent = JSON.stringify(response.data || response, null, 2);
+            this.showStatusModal = true;
+          }
+        } else {
+          this.toastr.error(response.message, `${action.charAt(0).toUpperCase() + action.slice(1)} Failed`);
+        }
+
         this.checkAppLiveStatus(appName);
       },
       (error) => {
@@ -400,6 +402,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.activeActionMap[`${this.selectedApp.name}-${action}`] || false;
   }
 
+  isActionActiveFor(action: string, app: ApplicationConfig | null): boolean {
+    if (!app) return false;
+    return this.activeActionMap[`${app.name}-${action}`] || false;
+  }
+
   closeLogsModal(): void {
     this.showLogsModal = false;
   }
@@ -414,21 +421,65 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  hasHealthCheckTarget(app: ApplicationConfig | null): boolean {
+    return !!(app?.application_url || app?.api_health_end_point);
+  }
+
+  getHealthLabel(status: boolean | undefined): string {
+    if (status === true) {
+      return 'Live';
+    }
+    if (status === false) {
+      return 'Down';
+    }
+    return '...';
+  }
+
+  getHealthIndicatorClass(status: boolean | undefined): string {
+    if (status === true) {
+      return 'bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.85)] animate-pulse';
+    }
+    if (status === false) {
+      return 'bg-rose-300';
+    }
+    return 'bg-amber-300 animate-pulse';
+  }
+
+  getHealthTextClass(status: boolean | undefined): string {
+    if (status === true) {
+      return 'text-emerald-100 animate-pulse';
+    }
+    if (status === false) {
+      return 'text-rose-100';
+    }
+    return 'text-amber-100';
+  }
+
+  isAppHealthy(app: ApplicationConfig): boolean | null {
+    const status = this.appLiveStatus[app.name];
+    return status ? status.healthy : null;
+  }
+
   checkAppLiveStatus(appName: string): void {
     this.appLiveStatus[appName] = null; // Set to checking
     this.deploymentService.checkAppLiveStatus(appName).subscribe(
       (response) => {
-        this.appLiveStatus[appName] = response.live || false;
+        this.appLiveStatus[appName] = response;
       },
-      (error) => {
-        this.appLiveStatus[appName] = false;
+      (_error) => {
+        this.appLiveStatus[appName] = {
+          applicationName: appName,
+          applicationUrlLive: false,
+          apiUrlLive: false,
+          healthy: false
+        };
       }
     );
   }
 
   checkAllAppsLiveStatus(): void {
     for (const app of this.applications) {
-      if (app.application_url) {
+      if (this.hasHealthCheckTarget(app)) {
         this.checkAppLiveStatus(app.name);
       }
     }
@@ -454,11 +505,5 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.runningServices = [];
       }
     );
-  }
-
-  refreshDashboard(): void {
-    this.loadApplications();
-    this.loadServerData();
-    this.checkDeployerHealth();
   }
 }

@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -218,37 +219,99 @@ public class DeploymentService {
     }
 
     /**
-     * Check if application is live by testing the application URL
+     * Check both public app URL and API URL health for an application
      */
-    public boolean checkAppLiveStatus(String applicationName) {
+    public Map<String, Object> checkApplicationHealthStatus(String applicationName) {
+        ApplicationConfiguration app = getApplicationByName(applicationName);
+        return buildHealthStatus(applicationName, app);
+    }
+
+    /**
+     * Check both public app URL and API URL health for all applications
+     */
+    public Map<String, Map<String, Object>> checkApplicationsHealthStatus(List<ApplicationConfiguration> applications) {
+        Map<String, Map<String, Object>> appStatuses = new HashMap<>();
+
+        for (ApplicationConfiguration app : applications) {
+            if (app != null && app.getName() != null) {
+                appStatuses.put(app.getName(), buildHealthStatus(app.getName(), app));
+            }
+        }
+
+        return appStatuses;
+    }
+
+    private ApplicationConfiguration getApplicationByName(String applicationName) {
         try {
-            // Get application configuration to find the URL
             List<ApplicationConfiguration> apps = getApplications();
-            ApplicationConfiguration app = apps.stream()
+            return apps.stream()
                     .filter(a -> a.getName().equals(applicationName))
                     .findFirst()
                     .orElse(null);
+        } catch (Exception e) {
+            log.error("Unexpected error loading application config for {}", applicationName, e);
+            return null;
+        }
+    }
 
-            if (app == null || app.getApplicationUrl() == null || app.getApplicationUrl().isEmpty()) {
-                log.warn("Application {} not found or has no URL configured", applicationName);
-                return false;
+    private Map<String, Object> buildHealthStatus(String applicationName, ApplicationConfiguration app) {
+        Map<String, Object> response = new HashMap<>();
+        boolean applicationUrlLive = checkApplicationUrlLiveStatus(app);
+        boolean apiUrlLive = checkApiUrlLiveStatus(app);
+        boolean healthy = applicationUrlLive && apiUrlLive;
+
+        response.put("applicationName", applicationName);
+        response.put("applicationUrlLive", applicationUrlLive);
+        response.put("apiUrlLive", apiUrlLive);
+        response.put("healthy", healthy);
+        response.put("message", healthy
+                ? "Application URL and API URL are healthy"
+                : "Application URL or API URL is not responding");
+        return response;
+    }
+
+    private boolean checkApplicationUrlLiveStatus(ApplicationConfiguration app) {
+        if (app == null || app.getApplicationUrl() == null || app.getApplicationUrl().isEmpty()) {
+            if (app != null) {
+                log.warn("Application {} has no application URL configured", app.getName());
             }
+            return false;
+        }
 
-            String url = app.getApplicationUrl();
-            log.info("Checking live status for {} at: {}", applicationName, url);
+        String url = app.getApplicationUrl();
 
-            // Make a simple GET request to the application URL
+        try {
+            log.info("Checking application URL for {} at: {}", app.getName(), url);
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             boolean isLive = response.getStatusCode().is2xxSuccessful();
-
-            log.info("Application {} live status: {}", applicationName, isLive);
+            log.info("Application URL status for {}: {}", app.getName(), isLive);
             return isLive;
-
         } catch (RestClientException e) {
-            log.warn("Failed to check live status for {}: {}", applicationName, e.getMessage());
+            log.warn("Failed to check application URL for {}: {}", app.getName(), e.getMessage());
             return false;
         } catch (Exception e) {
-            log.error("Unexpected error checking live status for {}", applicationName, e);
+            log.error("Unexpected error checking application URL for {}", app.getName(), e);
+            return false;
+        }
+    }
+
+    private boolean checkApiUrlLiveStatus(ApplicationConfiguration app) {
+        if (app.getApiHealthEndPoint() == null || app.getApiHealthEndPoint().isEmpty()) {
+            log.warn("Application {} has no API URL configured", app.getName());
+            return false;
+        }
+
+        try {
+            log.info("Checking API URL for {} at: {}", app.getName(), app.getApiHealthEndPoint());
+            ResponseEntity<String> response = restTemplate.getForEntity(app.getApiHealthEndPoint(), String.class);
+            boolean isLive = response.getStatusCode().value() == 200;
+            log.info("API URL status for {}: {}", app.getName(), isLive);
+            return isLive;
+        } catch (RestClientException e) {
+            log.warn("Failed to check API URL for {}: {}", app.getName(), e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("Unexpected error checking API URL for {}", app.getName(), e);
             return false;
         }
     }

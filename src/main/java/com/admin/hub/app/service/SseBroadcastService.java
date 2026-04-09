@@ -45,16 +45,10 @@ public class SseBroadcastService {
             deploymentController.broadcastHealthUpdate(healthData);
 
             // Get and broadcast app live status
-            Map<String, Object> appStatusData = new HashMap<>();
             List<ApplicationConfiguration> applications = deploymentService.getApplications();
-            Map<String, Boolean> appStatuses = new HashMap<>();
-
-            for (ApplicationConfiguration app : applications) {
-                if (app.getName() != null && app.getApplicationUrl() != null) {
-                    boolean isLive = deploymentService.checkAppLiveStatus(app.getName());
-                    appStatuses.put(app.getName(), isLive);
-                }
-            }
+            Map<String, Object> appStatusData = new HashMap<>();
+            Map<String, Map<String, Object>> appStatuses =
+                    deploymentService.checkApplicationsHealthStatus(applications);
 
             appStatusData.put("appStatuses", appStatuses);
             appStatusData.put(TIMESTAMP_KEY, System.currentTimeMillis());
@@ -96,4 +90,3 @@ public class SseBroadcastService {
         }
     }
 }
-

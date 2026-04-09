@@ -286,22 +286,20 @@ public class DeploymentController {
     }
 
     /**
-     * Check if application is live by testing the application URL
+     * Check if application public URL and API URL are healthy
      */
     @GetMapping("/applications/{applicationName}/health")
     public ResponseEntity<Map<String, Object>> checkAppLiveStatus(@PathVariable String applicationName) {
         try {
-            boolean isLive = deploymentService.checkAppLiveStatus(applicationName);
-            Map<String, Object> response = new HashMap<>();
-            response.put("applicationName", applicationName);
-            response.put("live", isLive);
-            response.put(MESSAGE_KEY, isLive ? "Application is live" : "Application is not responding");
+            Map<String, Object> response = deploymentService.checkApplicationHealthStatus(applicationName);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error checking live status for {}", applicationName, e);
             Map<String, Object> response = new HashMap<>();
             response.put("applicationName", applicationName);
-            response.put("live", false);
+            response.put("applicationUrlLive", false);
+            response.put("apiUrlLive", false);
+            response.put("healthy", false);
             response.put(MESSAGE_KEY, "Error checking application status: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }

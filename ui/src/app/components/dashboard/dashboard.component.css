@@ -12,14 +12,23 @@
   pointer-events: none;
 }
 
+.deployment-center-panel {
+  border-color: rgba(59, 130, 246, 0.95);
+  background:
+          linear-gradient(135deg, rgba(12, 74, 110, 0.88), rgba(15, 23, 42, 0.94)),
+          radial-gradient(circle at top right, rgba(34, 211, 238, 0.14), transparent 25%);
+}
+
 .dashboard-hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(135deg, rgba(12, 74, 110, 0.88), rgba(15, 23, 42, 0.94)),
-    radial-gradient(circle at top right, rgba(34, 211, 238, 0.2), transparent 28%);
   box-shadow: 0 18px 56px rgba(15, 23, 42, 0.32);
+}
+
+.applications-panel,
+.compact-actions-panel {
+  position: relative;
+  overflow: hidden;
 }
 
 .dashboard-hero::after {
@@ -34,17 +43,47 @@
   pointer-events: none;
 }
 
+.applications-panel::after,
+.compact-actions-panel::after {
+  content: '';
+  position: absolute;
+  right: -10%;
+  top: -35%;
+  width: 320px;
+  height: 320px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.2), transparent 68%);
+  pointer-events: none;
+}
+
 .hero-stat,
-.hero-refresh,
-.compact-actions-panel {
+.applications-panel,
+.compact-actions-panel,
+.server-overview-card,
+.filter-shell,
+.action-tile,
+.app-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(16px);
-}
-
-.hero-stat {
   border-radius: 20px;
   padding: 0.8rem 0.95rem;
+}
+
+.hero-stat--live {
+  border-color: rgba(74, 222, 128, 0.3);
+  background:
+    linear-gradient(180deg, rgba(6, 78, 59, 0.92), rgba(30, 41, 59, 0.82)),
+    radial-gradient(circle at top right, rgba(74, 222, 128, 0.18), transparent 35%);
+  box-shadow: 0 20px 40px rgba(6, 78, 59, 0.24);
+}
+
+.hero-stat--offline {
+  border-color: rgba(251, 113, 133, 0.35);
+  background:
+    linear-gradient(180deg, rgba(76, 5, 25, 0.92), rgba(30, 41, 59, 0.82)),
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.18), transparent 35%);
+  box-shadow: 0 20px 40px rgba(76, 5, 25, 0.26);
 }
 
 .hero-stat__label {
@@ -125,12 +164,12 @@
   flex: 0 0 320px;
   border-radius: 24px;
   padding: 1.35rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.74)),
-    radial-gradient(circle at top right, rgba(34, 211, 238, 0.18), transparent 35%);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.24);
   scroll-snap-align: start;
+}
+
+.mobile-app-card {
+  flex: initial;
+  padding: 1.25rem;
 }
 
 .app-card--selected {
@@ -139,6 +178,22 @@
   background:
     linear-gradient(180deg, rgba(8, 47, 73, 0.96), rgba(12, 74, 110, 0.74)),
     radial-gradient(circle at top right, rgba(125, 211, 252, 0.26), transparent 35%);
+}
+
+.app-card--live {
+  border-color: rgba(74, 222, 128, 0.3);
+  background:
+    linear-gradient(180deg, rgba(6, 78, 59, 0.92), rgba(30, 41, 59, 0.82)),
+    radial-gradient(circle at top right, rgba(74, 222, 128, 0.18), transparent 35%);
+  box-shadow: 0 20px 40px rgba(6, 78, 59, 0.24);
+}
+
+.app-card--offline {
+  border-color: rgba(251, 113, 133, 0.35);
+  background:
+    linear-gradient(180deg, rgba(76, 5, 25, 0.92), rgba(30, 41, 59, 0.82)),
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.18), transparent 35%);
+  box-shadow: 0 20px 40px rgba(76, 5, 25, 0.26);
 }
 
 .status-pill,
@@ -151,7 +206,6 @@
   background: rgba(15, 23, 42, 0.56);
   border: 1px solid rgba(148, 163, 184, 0.18);
   font-size: 0.78rem;
-  font-weight: 600;
 }
 
 .info-chip {
@@ -202,6 +256,13 @@
   border: 1px solid rgba(165, 243, 252, 0.2);
 }
 
+.applications-panel {
+  border-color: rgba(59, 130, 246, 0.95);
+  background:
+    linear-gradient(135deg, rgba(12, 74, 110, 0.76), rgba(15, 23, 42, 0.92)),
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.14), transparent 25%);
+}
+
 .compact-actions-panel {
   border-color: rgba(59, 130, 246, 0.95);
   background:
@@ -224,10 +285,7 @@
   justify-content: center;
   gap: 0.2rem;
   min-height: 78px;
-  border-radius: 18px;
   padding: 0.8rem;
-  border: 1px solid rgba(165, 243, 252, 0.16);
-  background: rgba(255, 255, 255, 0.05);
   color: white;
   font-size: 0.84rem;
 }

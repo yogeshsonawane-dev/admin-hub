@@ -45,6 +45,7 @@ public class ConfigurationResponse {
                                 .deployPath((String) configMap.get("deploy_path"))
                                 .symlink((String) configMap.get("symlink"))
                                 .applicationUrl((String) configMap.get("application_url"))
+                                .apiHealthEndPoint((String) configMap.get("api_health_end_point"))
                                 .build();
                         result.put(name, appConfig);
                     }
