@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { DeploymentService, ApplicationConfig, DeploymentResponse } from '../../services/deployment.service';
 import { ServerService, RunningService, ServerHealthSummary } from '../../services/server.service';
@@ -11,12 +11,15 @@ import { Subscription } from 'rxjs';
     styleUrls: ['./dashboard.component.css'],
     standalone: false
 })
-export class DashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('appCarousel') appCarousel?: ElementRef<HTMLDivElement>;
   applications: ApplicationConfig[] = [];
   loading = true;
   selectedApp: ApplicationConfig | null = null;
+  detailsApp: ApplicationConfig | null = null;
   selectedAction: string = '';
   deploymentResponse: DeploymentResponse | null = null;
+  showDetailsModal = false;
   showLogsModal = false;
   showStatusModal = false;
   logsContent = '';
@@ -27,6 +30,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private healthCheckInterval: any;
   private appStatusCheckInterval: any;
   private serverHealthInterval: any;
+  private autoSlideInterval: any;
   private previousServiceStatus: string = 'Checking...';
   appLiveStatus: { [key: string]: boolean | null } = {};
   private healthAndAppsSubscription: Subscription | null = null;
@@ -123,6 +127,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  ngAfterViewInit(): void {
+    this.startAutoSlide();
+  }
+
   ngOnDestroy(): void {
     // Unsubscribe from SSE streams
     if (this.healthAndAppsSubscription) {
@@ -143,6 +151,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Clean up the server health interval if it's set (fallback polling)
     if (this.serverHealthInterval) {
       clearInterval(this.serverHealthInterval);
+    }
+    if (this.autoSlideInterval) {
+      clearInterval(this.autoSlideInterval);
     }
   }
 
@@ -175,6 +186,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.applications = apps;
         this.loading = false;
         this.checkAllAppsLiveStatus();
+        this.startAutoSlide();
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (error) => {
@@ -215,12 +227,86 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return parts.length > 0 ? parts.join(' | ') : 'No description';
   }
 
+  getLiveAppCount(): number {
+    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name] === true).length;
+  }
+
+  getOfflineAppCount(): number {
+    return this.getFilteredApplications().filter(app => this.appLiveStatus[app.name] === false).length;
+  }
+
+  getCompactSubtitle(app: ApplicationConfig): string {
+    if (!app) return 'Deployment target';
+    return app.service_name || app.build_type || this.getDisplayHost(app.application_url) || 'Deployment target';
+  }
+
+  getDisplayHost(url?: string): string {
+    if (!url) return 'No public URL';
+    try {
+      return new URL(url).host;
+    } catch {
+      return url.replace(/^https?:\/\//, '');
+    }
+  }
+
+  openDetails(app: ApplicationConfig): void {
+    this.detailsApp = app;
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.detailsApp = null;
+  }
+
+  scrollApplications(direction: 'left' | 'right'): void {
+    if (!this.appCarousel?.nativeElement) {
+      return;
+    }
+
+    const container = this.appCarousel.nativeElement;
+    const amount = Math.max(container.clientWidth * 0.8, 280);
+    const maxScrollLeft = Math.max(container.scrollWidth - container.clientWidth, 0);
+
+    container.scrollBy({
+      left:
+        direction === 'right'
+          ? (container.scrollLeft >= maxScrollLeft - 4 ? -container.scrollLeft : amount)
+          : (container.scrollLeft <= 4 ? maxScrollLeft : -amount),
+      behavior: 'smooth'
+    });
+  }
+
+  private startAutoSlide(): void {
+    if (this.autoSlideInterval) {
+      clearInterval(this.autoSlideInterval);
+    }
+
+    this.autoSlideInterval = setInterval(() => {
+      if (this.loading || !this.appCarousel?.nativeElement || this.getFilteredApplications().length < 2) {
+        return;
+      }
+
+      const container = this.appCarousel.nativeElement;
+      const maxScrollLeft = Math.max(container.scrollWidth - container.clientWidth, 0);
+      const amount = Math.max(container.clientWidth * 0.8, 280);
+
+      if (container.scrollLeft >= maxScrollLeft - 4) {
+        container.scrollTo({ left: 0, behavior: 'smooth' });
+        return;
+      }
+
+      container.scrollBy({ left: amount, behavior: 'smooth' });
+    }, 10000);
+  }
+
   executeAction(action: string): void {
     if (!this.selectedApp) return;
 
     const appName = this.selectedApp.name;
     const key = `${appName}-${action}`;
 
+    this.selectedAction = action;
     this.activeActionMap[key] = true;
 
     const actionObservable = this.getActionObservable(action, appName);
