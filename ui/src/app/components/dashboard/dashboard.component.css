@@ -256,6 +256,17 @@
   border: 1px solid rgba(165, 243, 252, 0.2);
 }
 
+.app-card__name-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
 .applications-panel {
   border-color: rgba(59, 130, 246, 0.95);
   background:
