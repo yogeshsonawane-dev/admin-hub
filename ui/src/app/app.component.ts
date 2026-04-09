@@ -53,4 +53,9 @@ export class AppComponent implements OnInit {
   closeUserMenu(): void {
     this.userMenuOpen = false;
   }
+
+  refreshUI(): void {
+    window.location.reload();
+  }
+
 }

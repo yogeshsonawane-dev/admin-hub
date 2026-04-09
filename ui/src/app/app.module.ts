@@ -1,7 +1,7 @@
 import { NgModule, LOCALE_ID } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { CommonModule } from '@angular/common';
+import {CommonModule, NgOptimizedImage} from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideZoneChangeDetection } from '@angular/core';
@@ -37,6 +37,7 @@ import {HttpErrorInterceptor} from "./interceptors/http-error.interceptor";
             closeButton: true,
             progressBar: true
         }),
+        NgOptimizedImage,
     ],
     providers: [
         provideZoneChangeDetection({ eventCoalescing: false }),

@@ -277,8 +277,8 @@ sudo systemctl start adminhub-app
 Configure Nginx using provided configuration:
 
 ```bash
-sudo cp prod-deployment-scripts/adminhub.famvest.online /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/adminhub.famvest.online /etc/nginx/sites-enabled/
+sudo cp prod-deployment-scripts/adminhub.upvaly.com /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/adminhub.upvaly.com /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
