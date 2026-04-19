@@ -94,7 +94,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.healthCheckInterval = setInterval(() => {
           this.checkDeployerHealth();
           this.checkAllAppsLiveStatus();
-        }, 10000);
+        }, 30000);
       }
     );
 

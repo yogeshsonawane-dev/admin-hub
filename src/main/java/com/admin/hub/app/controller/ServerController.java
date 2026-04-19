@@ -74,6 +74,13 @@ public class ServerController {
     }
 
     /**
+     * Check if there are active SSE connections from browsers
+     */
+    public boolean hasActiveConnections() {
+        return !serverHealthEmitters.isEmpty();
+    }
+
+    /**
      * Method to broadcast server health updates to all connected clients
      */
     public void broadcastServerHealthUpdate(Map<String, Object> serverHealthData) {

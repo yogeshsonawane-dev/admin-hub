@@ -333,6 +333,13 @@ public class DeploymentController {
     }
 
     /**
+     * Check if there are active SSE connections from browsers
+     */
+    public boolean hasActiveConnections() {
+        return !healthEmitters.isEmpty() || !appsStatusEmitters.isEmpty();
+    }
+
+    /**
      * Method to broadcast health updates to all connected clients
      */
     public void broadcastHealthUpdate(Map<String, Object> healthData) {

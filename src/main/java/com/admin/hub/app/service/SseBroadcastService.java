@@ -31,9 +31,15 @@ public class SseBroadcastService {
 
     /**
      * Broadcast health and app status updates every 5 seconds
+     * Only broadcasts if there are active browser connections
      */
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 30000)
     public void broadcastHealthAndAppsStatus() {
+        // Only broadcast if there are active SSE connections
+        if (!deploymentController.hasActiveConnections()) {
+            return;
+        }
+
         try {
             // Check deployment service health
             Map<String, Object> healthData = new HashMap<>();
@@ -61,9 +67,15 @@ public class SseBroadcastService {
 
     /**
      * Broadcast server health and running services updates every 5 seconds
+     * Only broadcasts if there are active browser connections
      */
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 30000)
     public void broadcastServerHealth() {
+        // Only broadcast if there are active SSE connections
+        if (!serverController.hasActiveConnections()) {
+            return;
+        }
+
         try {
             Map<String, Object> serverHealthData = new HashMap<>();
 
